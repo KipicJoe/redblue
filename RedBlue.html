@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双色球随机生成器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background: #f5f5f5; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; }
+        .form-group { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        label { color: #555; font-size: 16px; }
+        input { width: 60px; padding: 5px; text-align: right; border: 1px solid #ddd; border-radius: 4px; }
+        .radio-group { display: flex; gap: 10px; }
+        .radio-group label { cursor: pointer; }
+        /* 单行小球布局 */
+        .result { 
+            display: flex; 
+            gap: 6px; 
+            flex-wrap: nowrap;
+            overflow-x: auto; 
+            margin: 20px 0; 
+            min-height: 60px; 
+            align-items: center;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #fafafa;
+            scrollbar-width: thin;
+        }
+        .ball { 
+            width: 30px; 
+            height: 30px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-weight: bold; 
+            flex-shrink: 0; 
+            font-size: 14px;
+        }
+        .ball.red { background: #e83e3e; }
+        .ball.blue { background: #409eff; }
+        .buttons { display: flex; gap: 10px; }
+        button { flex: 1; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        #generate { background: #e83e3e; color: white; }
+        #clearHistory { background: #ccc; color: #333; }
+        .history { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+        .history h3 { color: #666; margin-bottom: 10px; }
+        /* 5行历史记录高度 */
+        .history-list { 
+            max-height: 200px; 
+            overflow-y: auto; 
+            scrollbar-width: thin;
+        }
+        .history-item { 
+            padding: 12px 0; 
+            border-bottom: 1px dashed #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 15px;
+        }
+        .history-num {
+            min-width: 50px;
+            color: #999;
+        }
+        .history-content {
+            display: flex;
+            gap: 15px;
+            flex: 1;
+        }
+        .history-red, .history-blue {
+            display: inline-block;
+            min-width: 180px;
+        }
+        .history-red span { color: #e83e3e; font-weight: 500; }
+        .history-blue span { color: #409eff; font-weight: 500; }
+        .history-time { 
+            color: #999; 
+            font-size: 12px;
+            min-width: 60px;
+            text-align: right;
+        }
+        .history-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>双色球随机生成器</h1>
+
+        <div class="form-group">
+            <label>是否重复:</label>
+            <div class="radio-group">
+                <input type="radio" name="unique" id="uniqueYes" checked>
+                <label for="uniqueYes">不重复</label>
+                <input type="radio" name="unique" id="uniqueNo">
+                <label for="uniqueNo">可重复</label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>红色球:</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="number" id="redCount" value="6" min="1">个
+                <input type="number" id="redMin" value="1" min="1">-
+                <input type="number" id="redMax" value="33" min="1">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>蓝色球:</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="number" id="blueCount" value="1" min="1">个
+                <input type="number" id="blueMin" value="1" min="1">-
+                <input type="number" id="blueMax" value="16" min="1">
+            </div>
+        </div>
+
+        <div class="result" id="result">点击生成按钮获取号码</div>
+
+        <div class="buttons">
+            <button id="generate">立即生成</button>
+            <button id="clearHistory">清除历史</button>
+        </div>
+
+        <div class="history">
+            <h3>历史记录</h3>
+            <div class="history-list" id="historyList">暂无记录</div>
+        </div>
+    </div>
+
+    <script>
+        const generateBtn = document.getElementById('generate');
+        const clearBtn = document.getElementById('clearHistory');
+        const resultEl = document.getElementById('result');
+        const historyEl = document.getElementById('historyList');
+        let history = [];
+
+        function getRandomNumbers(count, min, max, isUnique) {
+            let nums = [];
+            while (nums.length < count) {
+                const num = Math.floor(Math.random() * (max - min + 1)) + min;
+                if (!isUnique || !nums.includes(num)) {
+                    nums.push(num);
+                }
+            }
+            return nums.sort((a, b) => a - b).map(n => n < 10 ? '0' + n : n.toString());
+        }
+
+        function renderBalls(redNums, blueNums) {
+            resultEl.innerHTML = '';
+            redNums.forEach(num => {
+                const ball = document.createElement('div');
+                ball.className = 'ball red';
+                ball.textContent = num;
+                resultEl.appendChild(ball);
+            });
+            blueNums.forEach(num => {
+                const ball = document.createElement('div');
+                ball.className = 'ball blue';
+                ball.textContent = num;
+                resultEl.appendChild(ball);
+            });
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+            // 关键修正：新记录添加到数组末尾，而非开头
+            history.push({
+                red: redNums,
+                blue: blueNums,
+                time: timeStr
+            });
+            renderHistory();
+        }
+
+        function renderHistory() {
+            if (history.length === 0) {
+                historyEl.innerHTML = '暂无记录';
+                return;
+            }
+            // 倒序渲染，最新记录在最上方，期数 = 数组索引 + 1
+            historyEl.innerHTML = history.map((item, index) => `
+                <div class="history-item">
+                    <div class="history-num">第${index + 1}期</div>
+                    <div class="history-content">
+                        <div class="history-red">红球: <span>${item.red.join(' ')}</span></div>
+                        <div class="history-blue">蓝球: <span>${item.blue.join(' ')}</span></div>
+                    </div>
+                    <span class="history-time">${item.time}</span>
+                </div>
+            `).reverse().join('');
+        }
+
+        generateBtn.addEventListener('click', () => {
+            const redCount = parseInt(document.getElementById('redCount').value);
+            const redMin = parseInt(document.getElementById('redMin').value);
+            const redMax = parseInt(document.getElementById('redMax').value);
+            const blueCount = parseInt(document.getElementById('blueCount').value);
+            const blueMin = parseInt(document.getElementById('blueMin').value);
+            const blueMax = parseInt(document.getElementById('blueMax').value);
+            const isUnique = document.getElementById('uniqueYes').checked;
+
+            if (redMin >= redMax || blueMin >= blueMax || redCount < 1 || blueCount < 1) {
+                resultEl.innerHTML = '<span style="color:red;">输入数值无效！</span>';
+                return;
+            }
+            if (isUnique && (redCount > redMax - redMin + 1 || blueCount > blueMax - blueMin + 1)) {
+                resultEl.innerHTML = '<span style="color:red;">数量超出范围！</span>';
+                return;
+            }
+
+            const redNums = getRandomNumbers(redCount, redMin, redMax, isUnique);
+            const blueNums = getRandomNumbers(blueCount, blueMin, blueMax, isUnique);
+            renderBalls(redNums, blueNums);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            history = [];
+            renderHistory();
+        });
+    </script>
+</body>
+</html>
