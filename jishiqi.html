@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>围棋计时器_第三版(分秒设置+修复5声提示音)</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
+  html,body{width:100%;height:100%;background:#000;color:#fff}
+  .wrap{display:flex;flex-direction:column;height:100vh}
+  .panel{display:flex;align-items:center;justify-content:center;padding:8px;background:#222;gap:6px}
+  .btn-area{flex:1;display:flex;align-items:center;justify-content:center;font-size:70px;font-weight:bold;border-radius:20px;margin:6px;cursor:pointer}
+  
+  .init{background:#333;}
+  .running{background:red;}
+  .wait{background:green;}
+  #top-time{transform:rotate(180deg);}
+  input{width:60px;padding:4px;text-align:center;font-size:16px;}
+  button{padding:6px 12px;font-size:16px;cursor:pointer;border:none;border-radius:4px;background:#666;color:#fff;}
+  button:hover{background:#888;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="btn-area init" id="top" onclick="clickTop()">
+    <div id="top-time">00:00</div>
+  </div>
+  <div class="panel">
+    时间：
+    <input type="number" id="setMin" value="1" min="0" placeholder="分"> 分
+    <input type="number" id="setSec" value="30" min="0" max="59" placeholder="秒"> 秒
+    <button onclick="apply()">应用</button>
+    <button onclick="reset()">重置</button>
+  </div>
+  <div class="btn-area init" id="bot" onclick="clickBot()">
+    <div id="bot-time">00:00</div>
+  </div>
+</div>
+<script>
+// 超时5声提示音：0.2秒间隔，850Hz蜂鸣
+function playBeep5Times() {
+  try {
+    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    for (let i = 0; i < 5; i++) {
+      let osc = audioCtx.createOscillator();
+      let gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 850;
+      gain.gain.value = 0.3;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      let start = i * 0.2;
+      osc.start(audioCtx.currentTime + start);
+      osc.stop(audioCtx.currentTime + start + 0.15);
+    }
+  } catch (e) {}
+}
+// 计时全局变量
+let totalSeconds = 0;
+let timeTop = 0;
+let timeBot = 0;
+let step = 0;       // 0=未开始 1=上方倒计时 2=下方倒计时
+let gameOver = false;
+let timer = null;
+// 时间格式化：mm:ss，补0非负
+function fmt(s) {
+  s = Math.max(0, s);
+  let m = Math.floor(s / 60);
+  let sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+// 刷新页面显示
+function show() {
+  document.getElementById('top-time').innerText = fmt(timeTop);
+  document.getElementById('bot-time').innerText = fmt(timeBot);
+}
+// 应用设置的分秒时长
+function apply() {
+  let m = parseInt(document.getElementById('setMin').value) || 0;
+  let s = parseInt(document.getElementById('setSec').value) || 0;
+  totalSeconds = m * 60 + s;
+  reset();
+}
+// 重置所有计时状态
+function reset() {
+  clearInterval(timer);
+  step = 0;
+  gameOver = false;
+  timeTop = totalSeconds;
+  timeBot = totalSeconds;
+  show();
+  document.getElementById('top').className = 'btn-area init';
+  document.getElementById('bot').className = 'btn-area init';
+}
+// 更新计时状态与开始倒计时
+function update() {
+  if (gameOver) return;
+  clearInterval(timer);
+  document.getElementById('top').className = 'btn-area init';
+  document.getElementById('bot').className = 'btn-area init';
+  if (step === 1) {
+    document.getElementById('top').classList.add('running');
+    document.getElementById('bot').classList.add('wait');
+  }
+  if (step === 2) {
+    document.getElementById('bot').classList.add('running');
+    document.getElementById('top').classList.add('wait');
+  }
+  timer = setInterval(() => {
+    if (gameOver) {
+      clearInterval(timer);
+      return;
+    }
+    if (step === 1) {
+      timeTop--;
+      if (timeTop <= 0) {
+        timeTop = 0;
+        show();
+        gameOver = true;
+        clearInterval(timer);
+        playBeep5Times();
+        alert('对方超时！本局结束，请重置');
+      }
+    }
+    if (step === 2) {
+      timeBot--;
+      if (timeBot <= 0) {
+        timeBot = 0;
+        show();
+        gameOver = true;
+        clearInterval(timer);
+        playBeep5Times();
+        alert('我方超时！本局结束，请重置');
+      }
+    }
+    show();
+  }, 1000);
+}
+// 点击上方对方计时区
+function clickTop() {
+  if (gameOver) return;
+  if (step === 0) {
+    step = 2;
+    update();
+    return;
+  }
+  if (step === 1) {
+    step = 2;
+    update();
+  }
+}
+// 点击下方自己计时区
+function clickBot() {
+  if (gameOver) return;
+  if (step === 0) {
+    step = 1;
+    update();
+    return;
+  }
+  if (step === 2) {
+    step = 1;
+    update();
+  }
+}
+// 页面初始化加载
+apply();
+show();
+</script>
+</body>
+</html>
