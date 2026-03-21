@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KipicJoe 的 GitHub 仓库</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f6f8fa;
+      margin: 0;
+      padding: 20px;
+      color: #24292e;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px 0;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 10px;
+      color: #0969da;
+    }
+    .subtitle {
+      color: #57606a;
+      margin-bottom: 15px;
+    }
+    .refresh-btn {
+      background: #2ea44f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .refresh-btn:hover {
+      background: #2c974b;
+    }
+    .loading, .error {
+      text-align: center;
+      padding: 50px 20px;
+      font-size: 1.1em;
+      color: #666;
+    }
+    .repo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .repo-card {
+      background: white;
+      border: 1px solid #e1e4e8;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .repo-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .repo-name {
+      font-size: 1.25em;
+      font-weight: 600;
+      color: #0969da;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .repo-name:hover {
+      text-decoration: underline;
+    }
+    .repo-desc {
+      color: #57606a;
+      margin: 10px 0;
+      font-size: 0.95em;
+    }
+    .repo-meta {
+      display: flex;
+      font-size: 0.85em;
+      color: #6e7781;
+      margin-top: 12px;
+      gap: 15px;
+    }
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      color: #6e7781;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>GitHub 用户：KipicJoe 的仓库</h1>
+      <p class="subtitle">实时同步 GitHub 公开仓库（新增/删除会自动更新）</p>
+      <a href="https://github.com/KipicJoe" target="_blank" style="display: inline-block; margin-bottom: 15px; color: #0969da;">👉 访问作者主页</a>
+      <br>
+      <button class="refresh-btn" onclick="loadRepos()">🔄 刷新仓库列表</button>
+    </header>
+
+    <main id="content">
+      <div class="loading">正在从 GitHub 加载仓库信息，请稍候……</div>
+    </main>
+
+    <footer>
+      <p>数据来自 GitHub API | 每次刷新都会获取最新仓库列表</p>
+    </footer>
+  </div>
+
+  <script>
+    const username = 'KipicJoe';
+    const apiUrl = `https://api.github.com/users/${username}/repos?per_page=100&sort=pushed`;
+
+    async function loadRepos() {
+      const content = document.getElementById('content');
+      content.innerHTML = '<div class="loading">正在加载……</div>';
+
+      try {
+        const response = await fetch(apiUrl);
+        if (response.status === 403 && response.headers.get('X-RateLimit-Remaining') === '0') {
+          throw new Error('API 请求次数已达上限，请稍后再试');
+        }
+        if (!response.ok) {
+          throw new Error(`加载失败：${response.status}`);
+        }
+        const repos = await response.json();
+
+        if (!Array.isArray(repos) || repos.length === 0) {
+          content.innerHTML = '<div class="error">该用户暂无公开仓库。</div>';
+          return;
+        }
+
+        let html = '<div class="repo-grid">';
+        repos.forEach(repo => {
+          const desc = repo.description ? repo.description.trim() : '无描述';
+          const lang = repo.language || '未指定';
+          const stars = repo.stargazers_count.toLocaleString();
+          const forks = repo.forks_count.toLocaleString();
+
+          html += `
+            <div class="repo-card">
+              <a class="repo-name" href="${repo.html_url}" target="_blank">
+                ${repo.name}
+              </a>
+              <p class="repo-desc">${desc}</p>
+              <div class="repo-meta">
+                <span class="meta-item">⭐ ${stars}</span>
+                <span class="meta-item">🍴 ${forks}</span>
+                <span class="meta-item">💻 ${lang}</span>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+        content.innerHTML = html;
+      } catch (error) {
+        content.innerHTML = `<div class="error">❌ 加载失败：<br>${error.message}</div>`;
+      }
+    }
+
+    window.addEventListener('load', loadRepos);
+  </script>
+</body>
+</html>
